@@ -1,2 +1,4 @@
 # Ignores folowing files and folders:
 venv/
+drawings/
+notes.txt
