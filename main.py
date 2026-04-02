@@ -5,11 +5,15 @@
 # Draw a number or something using a paint popup window to create training data
 # Use some AI to learn a python program to identify new drawing based on the training data
 
-# Libraries
-import os
+# Libraries (in "PEP 8" order)
+# Standard libraries:
+import os 
+
+# Third-party libraries:
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
-import tensorflow as tf # Or is PyTorch better?
+import tensorflow as tf # is PyTorch better?
 
 def initialize_program():
     global canvas
@@ -31,16 +35,17 @@ def mouse_listener(event, x, y, f, p):
     # 'f' & 'p' - flags & params
     
     global drawing # For editing draving states
-    n = 3 # Square size
+    n = 5 # Square size
 
     # Switch drawing state and deaw under mouse pointer:
     if event == cv2.EVENT_LBUTTONDOWN:
         drawing = True
+        canvas[y-n:y+n, x-n:x+n] = 0 # start WITH this first square
     if event == cv2.EVENT_LBUTTONUP:
         drawing = False
     elif event == cv2.EVENT_MOUSEMOVE:
         if drawing == True:
-            canvas[y-n:y+n, x-n:x+n] = 0 # Draw a small square
+            canvas[y-n:y+n, x-n:x+n] = 0 # Draw with squares
 
 def image_processing(drawing):
     # Should work both with .png and matrix
@@ -51,7 +56,7 @@ def image_processing(drawing):
 
 initialize_program()
 
-# Program states:
+# Program states:            
 STATE_COLLECT = 0
 STATE_STORE   = 1
 STATE_TRAIN   = 2
@@ -134,33 +139,71 @@ while True:
             if os.path.exists(target_dir):
                 for file in os.listdir(target_dir):
                     file_path = os.path.join(target_dir, file) 
-                    # os.path.join är KUNG! (lite säkrare än filsökvägen)
+                    # os.path.join är KUNG! (lite säkrare än filsökvägen men inte lika fancy som pathlib)
                     
-                    drawing = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
-                    if drawing is not None: # Säkerhetskoll om filen är trasig
-                        processed_drawing = image_processing(drawing)
+                    drawing_image = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
+                    if drawing_image is not None: # Säkerhetskoll om filen är trasig
+                        processed_drawing = image_processing(drawing_image)
 
-                        # Save drawing and label in lists:
+                        # Save drawing_image and label in lists:
                         geometry_drawing.append(processed_drawing) 
                         geometry_label.append(idx)
 
         X = np.array(geometry_drawing) # X - list of 2D matrices
         y = np.array(geometry_label) # y - list of labels (0, 1, 2) for (square, circle, triangle)
 
-
         # Thoughts:
         # We need more data than someone wants to draw simple images in this program!
+        # Values between 0 and 1 should ve better for training.
         # Solution, save the existing data in a practical way first - making it easier later on!
         # Later: optimize AI to train on less data (maybe copy and modfy existing data)
 
+        # 1. Shufle drawings
+        indices = np.arange(X.shape[0])
+        np.random.shuffle(indices)
+        X = X[indices]
+        y = y[indices]
 
-        pass
+        # 2. Split up drawings into training and testing set
+        split = int(len(X) * 0.8) # 80% training, 20% testing
+        X_train, X_test = X[:split], X[split:]
+        y_train, y_test = y[:split], y[split:]
+        # Normalize pixel values to float 0 - 1
+        X_train = X_train.astype('float32') / 255.0
+        X_test = X_test.astype('float32') / 255.0
 
-    # Test AI
+        # 3. Generate CNN (with help from my gemeni friend and optimized with "fingerspitz gefiel")
+        CNN_model = tf.keras.models.Sequential([ # Sequential ?
+            # Input Layer (decided by the drawings shape)
+            tf.keras.layers.Input(shape=(64, 64, 1)),
+            
+            # Feature Extraction
+            tf.keras.layers.Conv2D(32, (7, 7), activation='relu'), # convolution filter (48 filters of size 6x6 + ReLU - activtion)
+            tf.keras.layers.MaxPooling2D((2, 2)), # Downsampling
+            tf.keras.layers.Conv2D(64, (3, 3), activation='relu'), # more conv2 filters (on smaller areas)
+            #tf.keras.layers.MaxPooling2D((2, 2)),
+            
+            # Decision Making
+            tf.keras.layers.Flatten(), # Flatens out 2D matrix to 1D
+            tf.keras.layers.Dense(128, activation='relu'), # decides how to use the features (128 neurons + ReLU)
+            tf.keras.layers.Dropout(0.33), # Weird overfitting prevention that turns off neurons
+
+            # Output Layer
+            tf.keras.layers.Dense(3, activation='softmax') # 3 outputs (square, circle, triangle)
+        ])
+
+        # 4. Train model
+        CNN_model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+        CNN_model.fit(X_train, y_train, epochs=30, validation_data=(X_test, y_test))
+
+        
+        current_STATE = STATE_PREDICT
+
+
     elif current_STATE == STATE_PREDICT:
-        # TODO: Use AI to identify new drawings
+        # TODO: Use CNN model to identify a new drawing
         print("Predicting...")
-        pass
+        break
     
 
 cv2.destroyAllWindows()
