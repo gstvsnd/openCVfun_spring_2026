@@ -6,8 +6,22 @@
 # Use some AI to learn a python program to identify new drawing based on the training data
 
 # Libraries
+import os
 import cv2
 import numpy as np
+
+def initialize_program():
+    # Initialize canvas
+    canvas = np.zeros((512, 512, 1), np.uint8)
+    canvas.fill(255) # White background
+    print("Draw a Square, circle or triangle\nSpace  - clear\nEnter  - save\nEscape - Finish drawing")
+
+    # Create window and set mouse callback
+    cv2.namedWindow("canvasWindow")
+    cv2.setMouseCallback("canvasWindow", mouse_listener)
+
+    os.makedirs("drawings", exist_ok=True) # Creates folder for drawings if doesnt exist
+    # Comment: YOU CAN DELETE PREVIOUS DRAWINGS MANUALY IF YOU WANT!
 
 def mouse_listener(event, x, y, f, p):
     # 'event'   - mouse event type
@@ -26,15 +40,8 @@ def mouse_listener(event, x, y, f, p):
         if drawing == True:
             canvas[y-n:y+n, x-n:x+n] = 0 # Draw a small square
 
-# Initialize canvas
-canvas = np.zeros((512, 512, 1), np.uint8)
-canvas.fill(255) # White background
-print("Draw a Square, circle or triangle\nSpace  - clear\nEnter  - save\nEscape - Finish drawing")
 
-# Create window and set mouse callback
-cv2.namedWindow("canvasWindow")
-cv2.setMouseCallback("canvasWindow", mouse_listener)
-
+initialize_program()
 
 # Program states:
 STATE_COLLECT = 0
