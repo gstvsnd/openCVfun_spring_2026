@@ -25,6 +25,20 @@ def mouse_listener(event, x, y, f, p):
         if drawing == True:
             canvas[y-n:y+n, x-n:x+n] = 0 # Draw a small square
 
+def collect_drawings():
+    index = 1
+    while True:
+        cv2.imshow("canvasWindow", canvas)
+        key = cv2.waitKey(1) & 0xFF
+        if key == 32: # Space
+            canvas.fill(255) # Clear drawing
+        elif key == 13: # Enter
+            cv2.imwrite("drawings/drawing_" + str(index) + ".png", canvas) # Saves drawing under drawings folder
+            index += 1
+            canvas.fill(255) # Clear drawing
+        elif key == 27: # Escape
+            break # Escape matrix
+
 # Initialize canvas
 canvas = np.zeros((512, 512, 1), np.uint8)
 canvas.fill(255) # White background
@@ -37,18 +51,7 @@ cv2.setMouseCallback("canvasWindow", mouse_listener)
 
 
 # Collect drawings: 
-index = 1
-while True:
-    cv2.imshow("canvasWindow", canvas)
-    key = cv2.waitKey(1) & 0xFF
-    if key == 32: # Space
-        canvas.fill(255) # Clear drawing
-    elif key == 13: # Enter
-        cv2.imwrite("drawings/drawing_" + str(index) + ".png", canvas) # Saves drawing under drawings folder
-        index += 1
-        canvas.fill(255) # Clear drawing
-    elif key == 27: # Escape
-        break # Escape matrix
+collect_drawings()
 
 # TODO: Train AI to recognize drawings
 
