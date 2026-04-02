@@ -9,8 +9,11 @@
 import os
 import cv2
 import numpy as np
+import tensorflow as tf # Or is PyTorch better?
 
 def initialize_program():
+    global canvas
+
     # Initialize canvas
     canvas = np.zeros((512, 512, 1), np.uint8)
     canvas.fill(255) # White background
@@ -40,6 +43,12 @@ def mouse_listener(event, x, y, f, p):
         if drawing == True:
             canvas[y-n:y+n, x-n:x+n] = 0 # Draw a small square
 
+def image_processing(drawing):
+    # Should work both with .png and matrix
+    temp_drawing = drawing.copy() # Im scared
+    temp_drawing = cv2.resize(temp_drawing, (64, 64))
+    return temp_drawing
+
 
 initialize_program()
 
@@ -64,7 +73,7 @@ while True:
             canvas.fill(255) # Clear drawing (retry)
         elif key == 13: # Enter
             # Define label for drawing and save drawing
-            print("What have you drawn?\n1 - Square\n2 - Circle\n3 - Triangle")
+            print("What have you drawn?\n1 - Square\n2 - Circle\n3 - Triangle\nSpace - Skip labeling\nEscape or Enter - Other")
             current_STATE = STATE_LABEL # Switch state to label drawing
         elif key == 27: # Escape
             current_STATE = STATE_TRAIN # Escapes state
@@ -83,19 +92,37 @@ while True:
             label = "triangle"
         elif label_key == 27 or label_key == 13: # Escape or Enter
             label = "other"
-        else:
-            pass
+        
+        # Save image in labeled folder:
         if label != "undeclared":
-            cv2.imwrite("drawings/drawing_" + str(index) + "_ " + label + ".png", canvas) # Saves drawing under drawings folder
-            index += 1
-            canvas.fill(255) # Clear drawing
-            cv2.moveWindow("canvasWindow", 100, 100) # Moves "back" the window
-            current_STATE = STATE_COLLECT # Continue collecting drawings
+            target_dir = f"drawings/{label}" # target_dir - the new target direction for new drawing
+            os.makedirs(target_dir, exist_ok=True) # If not exist - create
+            existing_files = os.listdir(target_dir) # Checkar vilka filer som finns i "target_dir" (mappen för geometrin)
+            file_number = len(existing_files) + 1 # Finds the number of files and decides that the new file gets the next number
+            file_path = f"{target_dir}/{label}_{file_number}.png" # new filepath and filename
+            cv2.imwrite(file_path, canvas) # saves drawing
+            print(f"Check! Sparade {label} som nummer {file_number}") # debugg
+            canvas.fill(255) # clear canvas
+            cv2.moveWindow("canvasWindow", 100, 100) # Move back
+            
+            current_STATE = STATE_COLLECT
 
     # Train AI
     elif current_STATE == STATE_TRAIN:
-        # TODO: Train AI to recognize drawings
+        # Train AI to recognize drawings
         print("Training AI...")
+        # TODO: 
+        # make trainingdata by hand
+        # Load drawings and labels, preprocess data, define and train model
+        # Image processing?
+        # CNN > ANN
+
+        # Thoughts:
+        # We need more data than someone wants to draw simple images in this program!
+        # Solution, save the existing data in a practical way first - making it easier later on!
+        # Later: optimize AI to train on less data (maybe copy and modfy existing data)
+
+
         pass
 
     # Test AI
