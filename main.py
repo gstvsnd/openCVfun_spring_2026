@@ -121,12 +121,9 @@ while True:
         print("Training AI...")
         # TODO: 
         # make trainingdata by hand
-        # Load drawings and labels, preprocess data, define and train model
-        # Image processing?
         # CNN > ANN
-        # Start with processing Circle image:
 
-        # TODO Load training data: [ MAGIC CODE ]
+        # Load training data: [ MAGIC CODE ]
         geometry_drawing = [] # holds processed image of drawing
         geometry_label = [] # holds 0, 1, 2 for Square, Circle, Triangle
         
@@ -154,7 +151,7 @@ while True:
 
         # Thoughts:
         # We need more data than someone wants to draw simple images in this program!
-        # Values between 0 and 1 should ve better for training.
+        # Values between 0 and 1 should be better for training.
         # Solution, save the existing data in a practical way first - making it easier later on!
         # Later: optimize AI to train on less data (maybe copy and modfy existing data)
 
@@ -165,7 +162,7 @@ while True:
         y = y[indices]
 
         # 2. Split up drawings into training and testing set
-        split = int(len(X) * 0.8) # 80% training, 20% testing
+        split = int(len(X) * 0.75) # 75% for training, 25% for testing
         X_train, X_test = X[:split], X[split:]
         y_train, y_test = y[:split], y[split:]
         # Normalize pixel values to float 0 - 1
@@ -180,20 +177,29 @@ while True:
             # Feature Extraction
             tf.keras.layers.Conv2D(32, (7, 7), activation='relu'), # convolution filter (48 filters of size 6x6 + ReLU - activtion)
             tf.keras.layers.MaxPooling2D((2, 2)), # Downsampling
-            tf.keras.layers.Conv2D(64, (3, 3), activation='relu'), # more conv2 filters (on smaller areas)
-            #tf.keras.layers.MaxPooling2D((2, 2)),
-            
+            tf.keras.layers.Conv2D(64, (5, 5), activation='relu'), # more conv2 filters (on smaller areas)
+            tf.keras.layers.MaxPooling2D((2, 2)),
+            tf.keras.layers.Conv2D(32, (3, 3), activation='relu'), # more conv2 filters (on smaller areas)
+            tf.keras.layers.MaxPooling2D((2, 2)),
+            # Comment: Features -> downsampling -> Features -> more downsampling -> Features -> more downsampling
+            # fewer pixels & bigger scope for each layer
+
             # Decision Making
             tf.keras.layers.Flatten(), # Flatens out 2D matrix to 1D
             tf.keras.layers.Dense(128, activation='relu'), # decides how to use the features (128 neurons + ReLU)
-            tf.keras.layers.Dropout(0.33), # Weird overfitting prevention that turns off neurons
+            tf.keras.layers.Dropout(0.35), # Weird overfitting prevention that turns off neurons
 
             # Output Layer
             tf.keras.layers.Dense(3, activation='softmax') # 3 outputs (square, circle, triangle)
-        ])
+        ]) # Tensorflow makes the CNN harder to understand
 
-        # 4. Train model
-        CNN_model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+        # 4. Train model (Adam - have some momenum & adaptive learning rate)
+        custom_optimizer = tf.keras.optimizers.Adam(learning_rate=0.001) # MAX lr
+        CNN_model.compile(
+            optimizer=custom_optimizer,
+            loss='sparse_categorical_crossentropy',
+            metrics=['accuracy']
+        )
         CNN_model.fit(X_train, y_train, epochs=30, validation_data=(X_test, y_test))
 
         
@@ -202,6 +208,7 @@ while True:
 
     elif current_STATE == STATE_PREDICT:
         # TODO: Use CNN model to identify a new drawing
+        # Maybe add each drawing to dataset
         print("Predicting...")
         break
     
