@@ -5,14 +5,13 @@
 # Draw a number or something using a paint popup window to create training data
 # Use some AI to learn a python program to identify new drawing based on the training data
 
-# Libraries (in "PEP 8" order)
 # Standard libraries:
 import os 
 
 # Third-party libraries:
 import cv2
 import numpy as np
-import tensorflow as tf # is PyTorch better? - "yes, probably!"
+import tensorflow as tf
 
 def initialize_program():
     global canvas
@@ -77,12 +76,12 @@ STATE_COLLECT = 0
 STATE_STORE   = 1
 STATE_TRAIN   = 2
 STATE_PREDICT = 3
-current_STATE = STATE_COLLECT # Decides state entry
-previous_STATE = STATE_COLLECT # Allow machine to return
+current_STATE = STATE_COLLECT
+previous_STATE = STATE_COLLECT
 last_printed_STATE = None # ONLY FOR UI
 
 # Global variables:
-drawing = False # Decides if mouse is painting
+drawing = False
 
 while True:
 
@@ -93,12 +92,12 @@ while True:
         cv2.imshow("canvasWindow", canvas)
         key = cv2.waitKey(1) & 0xFF
         if key == 32: # Space
-            canvas.fill(255) # Clear drawing (retry)
+            canvas.fill(255)
         elif key == 13: # Enter
-            current_STATE = STATE_STORE # Switch state to store drawing
+            current_STATE = STATE_STORE
         elif key == 27: # Escape
             cv2.moveWindow("canvasWindow", 5000, 5000)
-            current_STATE = STATE_TRAIN # Escapes state
+            current_STATE = STATE_TRAIN
 
     # Label drawings
     elif current_STATE == STATE_STORE:
@@ -121,14 +120,14 @@ while True:
         
         # Save image in labeled folder:
         if label != "undeclared":
-            target_dir = f"drawings/{label}" # target_dir - the new target direction for new drawing
-            os.makedirs(target_dir, exist_ok=True) # If not exist - create
-            existing_files = os.listdir(target_dir) # Checkar vilka filer som finns i "target_dir" (mappen för geometrin)
-            file_number = len(existing_files) + 1 # Finds the number of files and decides that the new file gets the next number
+            target_dir = f"drawings/{label}" # target_dir - target directory
+            os.makedirs(target_dir, exist_ok=True) # If shape-folder soes not exist - create folder
+            existing_files = os.listdir(target_dir) # Checks files in target directory
+            file_number = len(existing_files) + 1 # Finds the number of files in target directory and decides that the new file gets the next number
             file_path = f"{target_dir}/{label}_{file_number}.png" # new filepath and filename
-            cv2.imwrite(file_path, canvas) # saves drawing
-            print(f"Saved: {label} with index: {file_number}") # debugg
-            canvas.fill(255) # clear canvas
+            cv2.imwrite(file_path, canvas)
+            print(f"Saved: {label} with index: {file_number}")
+            canvas.fill(255)
             cv2.moveWindow("canvasWindow", 100, 100) # Move back
             
             current_STATE = previous_STATE # Returns to previous state
@@ -163,27 +162,21 @@ while True:
         X = np.array(geometry_drawing) # X - list of 2D matrices
         y = np.array(geometry_label) # y - list of labels (0, 1, 2, 3) for (square, circle, triangle, other)
 
-        # Thoughts:
-        # We need more data than someone wants to draw simple images in this program!
-        # Values between 0 and 1 should be better for training.
-        # Solution, save the existing data in a practical way first - making it easier later on!
-        # Later: optimize AI to train on less data (maybe copy and modfy existing data)
-
-        # 1. Shufle drawings
+        # Shufle drawings
         indices = np.arange(X.shape[0])
         np.random.shuffle(indices)
         X = X[indices]
         y = y[indices]
 
-        # 2. Split up drawings into training and testing set
+        # Split up drawings into training and testing set
         split = int(len(X) * 0.75) # 75% for training, 25% for testing
         X_train, X_test = X[:split], X[split:]
         y_train, y_test = y[:split], y[split:]
-        # Normalize pixel values to float 0 - 1
+        # Normalize pixel values to float 0 - 1 (Beter for training)
         X_train = X_train.astype('float32') / 255.0
         X_test = X_test.astype('float32') / 255.0
 
-        # 3. Generate CNN (with help from my gemeni friend and optimized with "fingerspitz gefiel")
+        # Generate CNN (with help from my gemeni friend and optimized with "fingerspitz gefiel")
         CNN_model = tf.keras.models.Sequential([ # Sequential ?
             # Input Layer (decided by the drawings shape)
             tf.keras.layers.Input(shape=(64, 64, 1)),
@@ -207,8 +200,8 @@ while True:
             tf.keras.layers.Dense(4, activation='softmax') # 4 outputs (square, circle, triangle, other)
         ]) # Tensorflow makes the CNN harder to understand
 
-        # 4. Train model (Adam - have some momenum & adaptive learning rate)
-        custom_optimizer = tf.keras.optimizers.Adam(learning_rate=0.001) # MAX lr
+        # Train model (Adam - have some momenum & adaptive learning rate)
+        custom_optimizer = tf.keras.optimizers.Adam(learning_rate=0.001) # MAX lr = 0.001
         CNN_model.compile(
             optimizer=custom_optimizer,
             loss='sparse_categorical_crossentropy',
@@ -227,16 +220,14 @@ while True:
     elif current_STATE == STATE_PREDICT:
         last_printed_STATE = print_instructions_on_entry(current_STATE, last_printed_STATE)
 
-        # Use CNN model to identify a new drawing
         # Show canvas and wait for user to draw something new:
         cv2.imshow("canvasWindow", canvas)
         key = cv2.waitKey(1) & 0xFF
         if key == 32: # Space
-            canvas.fill(255) # Clear drawing (retry)
+            canvas.fill(255)
         elif key == ord('q') or key == 27: # quit (q or escape)
             break
         elif key == 13: # Enter
-            # Define label for drawing and save drawing
             print("Predicting...")
 
             # Behandla användarens bild för att pass modellen:
@@ -257,7 +248,8 @@ while True:
             # Print:
             labels = ["Kvadrat", "Cirkel", "Triangel", "Other"]
             print(f"Resultat: {labels[class_idx]} ({confidence*100:.1f}% säker)")
-            print("Draw something new to test the the CNN!\nSpace - clear\nEnter - predict\ns     - save & label image\nq     - quit")
+            last_printed_STATE = None
+            last_printed_STATE = print_instructions_on_entry(current_STATE, last_printed_STATE)
         elif key == ord('s'): # Save image (for later training)
             # Go to saving state and then return!
             previous_STATE = STATE_PREDICT
@@ -266,10 +258,8 @@ while True:
             previous_STATE = STATE_PREDICT
             current_STATE = STATE_TRAIN # Retrain
         
-    # Comment: This works with a even dataset of 135 drawings
-    # BUT IT MISTAKES SQUARES FOR TRIANGLES!!!!!
-    # Hardest shape is a "drop" - basically puts out whatever
-    # Challenge: Swuares and triangles has similar features
+    # Comment: 
+    # Challenge: Squares and triangles has similar features
     
     # TODO: Dynamic labeling to predict any kind of drawing decided by dataset or artist
     # Allow Artist to define what should exist in the dataset.
