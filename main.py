@@ -271,11 +271,14 @@ while True:
     # Hardest shape is a "drop" - basically puts out whatever
     # Challenge: Swuares and triangles has similar features
     
-    # TODO: manualy lable mistakes and add to training data 
-    # "Supervise supervised learning!" - Human in the loop (Retrain or Fine-tune)
-    
     # TODO: Dynamic labeling to predict any kind of drawing decided by dataset or artist
-    # This has become an exercice in basic python
+    # Allow Artist to define what should exist in the dataset.
+
+    # TODO: Modify drawings by rotating and moving (maybe "zooming") to increase dataset size
+    # Corrects for uncommon angles (eg 45degree square)
+
+    # TODO: Balance dataset
+    # Eliminates the risk of model guessing the more common shape
 
     # TODO: Clean up code and break out into functions and classes
     # Save iamge with label should be its own function
