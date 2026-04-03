@@ -93,12 +93,23 @@ def prepare_training_data():
                 file_path = os.path.join(target_dir, file)
                 drawing_image = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
                 if drawing_image is not None:
-                    processed_drawing = image_processing(drawing_image)
-                    # Save drawing_image and label in lists:
-                    geometry_drawing.append(processed_drawing) 
-                    geometry_label.append(idx)
+                    # rotate image 30 degrees(pi/6) 11 times to generate 11 MORE images for
+                    for n in range(11):
+                        # Transformation matrix (n * 30 degree rotation)
+                        angle = n * (np.pi / 6)
+                        M = np.array([ [np.cos(angle), -np.sin(angle), 0], [np.sin(angle), np.cos(angle), 0]])
 
-        X = np.array(geometry_drawing) # X - list of 2D matrices
+                        # Rotates image and fills corners with 255/white:
+                        h, w = drawing_image.shape # height & width (512)
+                        rotated_img = cv2.warpAffine(drawing_image, M, (w, h), borderValue=255)
+
+                        # Compromize and append
+                        rotated_img = rotated_img.astype('float32') / 255.0
+                        processed_drawing = image_processing(rotated_img)
+                        geometry_drawing.append(processed_drawing) 
+                        geometry_label.append(idx)
+
+        X = np.array(geometry_drawing) # X - list of 2D matrices (normalized floats 0 - 1)
         y = np.array(geometry_label) # y - list of labels (0, 1, 2, 3) for (square, circle, triangle, other)
 
         # Shufle drawings
@@ -106,6 +117,8 @@ def prepare_training_data():
         np.random.shuffle(indices)
         X = X[indices]
         y = y[indices]
+
+        
 
     return X, y
 
@@ -178,6 +191,7 @@ while True:
 
         # Load training data:
         X, y = prepare_training_data()
+        # returns processed and normalized trainingdata
 
         # TODO: Balance dataset
         # Eliminates the risk of model guessing the more common shape
@@ -186,9 +200,6 @@ while True:
         split = int(len(X) * 0.75) # 75% for training, 25% for testing
         X_train, X_test = X[:split], X[split:]
         y_train, y_test = y[:split], y[split:]
-        # Normalize pixel values to float 0 - 1 (Beter for training)
-        X_train = X_train.astype('float32') / 255.0
-        X_test = X_test.astype('float32') / 255.0
 
         # Generate CNN
         CNN_model = tf.keras.models.Sequential([
