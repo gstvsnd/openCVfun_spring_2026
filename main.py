@@ -53,6 +53,22 @@ def image_processing(drawing):
     temp_drawing = cv2.resize(temp_drawing, (64, 64))
     return temp_drawing
 
+def print_instructions_on_entry(state, last_printed_STATE):
+    # prints instructions if not already printed
+    # Function returns current state to update "last_printed_STATE"
+    if state == last_printed_STATE:
+        return state
+        # set last_printed_STATE = state
+    else:
+        if state == STATE_COLLECT:
+            print("Draw a Square, circle or triangle\nSpace  - clear\nEnter  - save\nEscape - Finish drawing")
+        elif state == STATE_STORE:
+            print("What have you drawn?\n1 - Square\n2 - Circle\n3 - Triangle\nEnter - Other\nEscape - ESCAPE!")
+        elif state == STATE_TRAIN:
+            print("Training AI...")
+        elif state == STATE_PREDICT:
+            print("Draw something new to test the the CNN!\nSpace - clear\nEnter - predict\ns     - save & label image\nq     - quit")
+        return state
 
 initialize_program()
 
@@ -61,33 +77,34 @@ STATE_COLLECT = 0
 STATE_STORE   = 1
 STATE_TRAIN   = 2
 STATE_PREDICT = 3
-current_STATE = STATE_COLLECT # Initial state
-previous_STATE = STATE_COLLECT # Allow machine to go back
+current_STATE = STATE_COLLECT # Decides state entry
+previous_STATE = STATE_COLLECT # Allow machine to return
+last_printed_STATE = None # ONLY FOR UI
 
 # Global variables:
 index = 1 # Counts drawings
 drawing = False # Decides if mouse is painting
 
-print("Draw a Square, circle or triangle\nSpace  - clear\nEnter  - save\nEscape - Finish drawing")
-
 while True:
 
     # Generate drawings with labels
     if current_STATE == STATE_COLLECT:
+        last_printed_STATE = print_instructions_on_entry(current_STATE, last_printed_STATE)
+
         cv2.imshow("canvasWindow", canvas)
         key = cv2.waitKey(1) & 0xFF
         if key == 32: # Space
             canvas.fill(255) # Clear drawing (retry)
         elif key == 13: # Enter
-            # Define label for drawing and save drawing
-            print("What have you drawn?\n1 - Square\n2 - Circle\n3 - Triangle\nEnter - Other\nEscape - ESCAPE!")
-            current_STATE = STATE_STORE # Switch state to label drawing
+            current_STATE = STATE_STORE # Switch state to store drawing
         elif key == 27: # Escape
             cv2.moveWindow("canvasWindow", 5000, 5000)
             current_STATE = STATE_TRAIN # Escapes state
 
     # Label drawings
     elif current_STATE == STATE_STORE:
+        last_printed_STATE = print_instructions_on_entry(current_STATE, last_printed_STATE)
+
         # Force the artist to take a brak and label the drawing
         cv2.moveWindow("canvasWindow", 5000, 5000) # Moves the window in a weird way (lower right corner of my screen)
         label_key = cv2.waitKey(1) & 0xFF
@@ -111,17 +128,15 @@ while True:
             file_number = len(existing_files) + 1 # Finds the number of files and decides that the new file gets the next number
             file_path = f"{target_dir}/{label}_{file_number}.png" # new filepath and filename
             cv2.imwrite(file_path, canvas) # saves drawing
-            print(f"Check! Sparade {label} som nummer {file_number}") # debugg
+            print(f"Saved: {label} with index: {file_number}") # debugg
             canvas.fill(255) # clear canvas
             cv2.moveWindow("canvasWindow", 100, 100) # Move back
             
-            current_STATE = previous_STATE
-            print("Draw a Square, circle or triangle\nSpace  - clear\nEnter  - save\nEscape - Finish drawing")
+            current_STATE = previous_STATE # Returns to previous state
 
-    # Train AI
-    elif current_STATE == STATE_TRAIN:
-        # Train AI to recognize drawings
-        print("Training AI...")
+    # Train AI on drawings
+    elif current_STATE == STATE_TRAIN: 
+        last_printed_STATE = print_instructions_on_entry(current_STATE, last_printed_STATE)
 
         # Load training data: [ MAGIC CODE ]
         geometry_drawing = [] # holds processed image of drawing
@@ -205,13 +220,14 @@ while True:
         #  Save model:
         CNN_model.save('geometry_model.keras')
         
-        # Move back canvas window and give artist new instructions:
-        print("Draw something new to test the the CNN!\nSpace - clear\nEnter - predict\nq     - quit")
+        # Continue to prediction state:
         cv2.moveWindow("canvasWindow", 100, 100) 
         current_STATE = STATE_PREDICT
 
 
     elif current_STATE == STATE_PREDICT:
+        last_printed_STATE = print_instructions_on_entry(current_STATE, last_printed_STATE)
+
         # Use CNN model to identify a new drawing
         # Show canvas and wait for user to draw something new:
         cv2.imshow("canvasWindow", canvas)
@@ -247,15 +263,11 @@ while True:
             # Go to saving state and then return!
             previous_STATE = STATE_PREDICT
             current_STATE = STATE_STORE
-            print("What have you drawn?\n1 - Square\n2 - Circle\n3 - Triangle\nEnter - Other\nEscape - ESCAPE!") # prints once
         
     # Comment: This works with a even dataset of 135 drawings
     # BUT IT MISTAKES SQUARES FOR TRIANGLES!!!!!
     # Hardest shape is a "drop" - basically puts out whatever
     # Challenge: Swuares and triangles has similar features
-
-    # TODO: add save button to save image.
-    # Continue playing around, 
     
     # TODO: manualy lable mistakes and add to training data 
     # "Supervise supervised learning!" - Human in the loop (Retrain or Fine-tune)
