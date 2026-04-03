@@ -78,7 +78,7 @@ while True:
             canvas.fill(255) # Clear drawing (retry)
         elif key == 13: # Enter
             # Define label for drawing and save drawing
-            print("What have you drawn?\n1 - Square\n2 - Circle\n3 - Triangle\nEscape or Enter - Other")
+            print("What have you drawn?\n1 - Square\n2 - Circle\n3 - Triangle\nEnter - Other\nEscape - ESCAPE!")
             current_STATE = STATE_STORE # Switch state to label drawing
         elif key == 27: # Escape
             cv2.moveWindow("canvasWindow", 5000, 5000)
@@ -96,8 +96,10 @@ while True:
             label = "circle"
         elif label_key == 51: # '3'
             label = "triangle"
-        elif label_key == 27 or label_key == 13: # Escape or Enter
+        elif label_key == 13: # Enter
             label = "other"
+        elif label_key == 27: # Escape
+            label = "undeclared"
         
         # Save image in labeled folder:
         if label != "undeclared":
@@ -118,15 +120,12 @@ while True:
     elif current_STATE == STATE_TRAIN:
         # Train AI to recognize drawings
         print("Training AI...")
-        # TODO: 
-        # make trainingdata by hand
-        # CNN > ANN
 
         # Load training data: [ MAGIC CODE ]
         geometry_drawing = [] # holds processed image of drawing
-        geometry_label = [] # holds 0, 1, 2 for Square, Circle, Triangle
+        geometry_label = [] # holds 0, 1, 2, 3 for Square, Circle, Triangle, Other
         
-        categories = ["square", "circle", "triangle"]
+        categories = ["square", "circle", "triangle", "other"]
         
         # enumerate ger: idx=0, label="square", idx=1, label="circle" osv...
         for idx, label in enumerate(categories):
@@ -146,7 +145,7 @@ while True:
                         geometry_label.append(idx)
 
         X = np.array(geometry_drawing) # X - list of 2D matrices
-        y = np.array(geometry_label) # y - list of labels (0, 1, 2) for (square, circle, triangle)
+        y = np.array(geometry_label) # y - list of labels (0, 1, 2, 3) for (square, circle, triangle, other)
 
         # Thoughts:
         # We need more data than someone wants to draw simple images in this program!
@@ -189,7 +188,7 @@ while True:
             tf.keras.layers.Dropout(0.35), # Weird overfitting prevention that turns off neurons
 
             # Output Layer
-            tf.keras.layers.Dense(3, activation='softmax') # 3 outputs (square, circle, triangle)
+            tf.keras.layers.Dense(4, activation='softmax') # 4 outputs (square, circle, triangle, other)
         ]) # Tensorflow makes the CNN harder to understand
 
         # 4. Train model (Adam - have some momenum & adaptive learning rate)
@@ -204,7 +203,9 @@ while True:
         #  Save model:
         CNN_model.save('geometry_model.keras')
         
-        cv2.moveWindow("canvasWindow", 100, 100) # Move back canvas window
+        # Move back canvas window and give artist new instructions:
+        print("Draw something new to test the the CNN!\nSpace - clear\nEnter - predict\nq     - quit")
+        cv2.moveWindow("canvasWindow", 100, 100) 
         current_STATE = STATE_PREDICT
 
 
@@ -215,6 +216,8 @@ while True:
         key = cv2.waitKey(1) & 0xFF
         if key == 32: # Space
             canvas.fill(255) # Clear drawing (retry)
+        elif key == ord('q'): # quit
+            break
         elif key == 13: # Enter
             # Define label for drawing and save drawing
             print("Predicting...")
@@ -235,11 +238,18 @@ while True:
             confidence = np.max(prediction) # Certainty
 
             # Print:
-            labels = ["Kvadrat", "Cirkel", "Triangel"]
+            labels = ["Kvadrat", "Cirkel", "Triangel", "Other"]
             print(f"Resultat: {labels[class_idx]} ({confidence*100:.1f}% säker)")
         
-            # Comment: This works realy nice now(!) with a even dataset of 135 drawings
+            # Comment: This works with a even dataset of 135 drawings
+            # BUT IT MISTAKES SQUARES FOR TRIANGLES!!!!!
+            # Hardest shape is a "drop" - basically puts out whatever
+            # Challenge: Swuares and triangles has similar features
             # Continue playing around, TODO: add save button to save image.
+            # TODO: manualy lable mistakes and add to training data 
+            # "Supervise supervised learning!" - Human in the loop
+            # TODO: Dynamic labeling to predict any kind of drawing decided by dataset or artist
+            # This has become an exercice in basic python
 
     
 
