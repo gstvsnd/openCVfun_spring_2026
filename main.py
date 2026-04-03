@@ -15,10 +15,10 @@ import numpy as np
 import tensorflow as tf # is PyTorch better? - "yes, probably!"
 
 def initialize_program():
-    global canvas, global window_size = 512
+    global canvas
 
     # Initialize canvas
-    canvas = np.zeros((window_size, window_size, 1), np.uint8)
+    canvas = np.zeros((512, 512, 1), np.uint8)
     canvas.fill(255) # White background
 
     # Create window and set mouse callback
@@ -62,6 +62,7 @@ STATE_STORE   = 1
 STATE_TRAIN   = 2
 STATE_PREDICT = 3
 current_STATE = STATE_COLLECT # Initial state
+previous_STATE = STATE_COLLECT # Allow machine to go back
 
 # Global variables:
 index = 1 # Counts drawings
@@ -114,7 +115,7 @@ while True:
             canvas.fill(255) # clear canvas
             cv2.moveWindow("canvasWindow", 100, 100) # Move back
             
-            current_STATE = STATE_COLLECT
+            current_STATE = previous_STATE
             print("Draw a Square, circle or triangle\nSpace  - clear\nEnter  - save\nEscape - Finish drawing")
 
     # Train AI
@@ -217,7 +218,7 @@ while True:
         key = cv2.waitKey(1) & 0xFF
         if key == 32: # Space
             canvas.fill(255) # Clear drawing (retry)
-        elif key == ord('q'): # quit
+        elif key == ord('q') or key == 27: # quit (q or escape)
             break
         elif key == 13: # Enter
             # Define label for drawing and save drawing
@@ -228,7 +229,7 @@ while True:
             test_img = test_img.astype('float32') / 255.0
 
             # (batch, height, width, channels) 
-            # (64, 64) -> (1, 64, 64, 1) -- "2D -> 4D"
+            # (64, 64) -> (1, 64, 64, 1) -- "2D -> 4D" (barch of 1 grayscale image)
             test_img = np.expand_dims(test_img, axis=(0, -1))
 
             # Predict!
@@ -241,7 +242,12 @@ while True:
             # Print:
             labels = ["Kvadrat", "Cirkel", "Triangel", "Other"]
             print(f"Resultat: {labels[class_idx]} ({confidence*100:.1f}% säker)")
-            print("Draw something new to test the the CNN!\nSpace - clear\nEnter - predict\nq     - quit")
+            print("Draw something new to test the the CNN!\nSpace - clear\nEnter - predict\ns     - save & label image\nq     - quit")
+        elif key == ord('s'): # Save image (for later training)
+            # Go to saving state and then return!
+            previous_STATE = STATE_PREDICT
+            current_STATE = STATE_STORE
+            print("What have you drawn?\n1 - Square\n2 - Circle\n3 - Triangle\nEnter - Other\nEscape - ESCAPE!") # prints once
         
     # Comment: This works with a even dataset of 135 drawings
     # BUT IT MISTAKES SQUARES FOR TRIANGLES!!!!!
@@ -252,9 +258,13 @@ while True:
     # Continue playing around, 
     
     # TODO: manualy lable mistakes and add to training data 
-    # "Supervise supervised learning!" - Human in the loop
+    # "Supervise supervised learning!" - Human in the loop (Retrain or Fine-tune)
     
     # TODO: Dynamic labeling to predict any kind of drawing decided by dataset or artist
     # This has become an exercice in basic python
+
+    # TODO: Clean up code and break out into functions and classes
+    # Save iamge with label should be its own function
+    # Object for canvas and dataset? - idk
 
 cv2.destroyAllWindows()
