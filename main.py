@@ -80,10 +80,11 @@ def center_and_resize_image(drawing_image):
     y_upper = y # upper
 
     # [0, 0] left  upper
-    # [y, x] right lower
     # [0, x] left  lower
     # [y, 0] right upper
+    # [y, x] right lower
 
+    # O(x²):
     for y_pointer in range(y):
         for x_pointer in range(x):
             if inverted_image[y_pointer, x_pointer] > 0 and x_pointer < x_left:
@@ -96,13 +97,32 @@ def center_and_resize_image(drawing_image):
                 y_lower = y_pointer
 
     print(f"x_left: {x_left}, x_right: {x_right}, y_lower: {y_lower}, y_upper: {y_upper}") #debugg
-
-    # Center and rescale figure and leave space for rotation "figure_size/sqrt(2)"
     
-    # 1. Center
+    # Find coordinates of figure-center
+    width_center = (x_left + x_right)/2
+    height_center = (y_lower + y_upper)/2
 
-    # 2. Rescale
+    # Offset (integer-division for pixels)
+    offset_x = (x//2) - width_center
+    offset_y = (y//2) - height_center
+    
+    # Center
+    centered_image = np.full((y, x), 0, dtype=np.uint8)
 
+    # We are the artists now!
+    for y_pointer in range(y):
+        for x_pointer in range(x):
+            if inverted_image[y_pointer, x_pointer] > 0:
+                new_y = int(y_pointer + offset_y) # Important to be an integer!
+                new_x = int(x_pointer + offset_x)
+                # Paint! - since the figure is smaller than the canvas, WE WILL NOT SPILL THE PAINT!
+                centered_image[new_y, new_x] = inverted_image[y_pointer, x_pointer]
+    cv2.imshow("Debug", centered_image) # debugg
+    cv2.waitKey(0)
+    # Milestone: centered_image is an inverted and centered verion of drawing_image
+
+
+    # Rescale and leave space for rotation "sqrt(2)"
 
     return drawing_image
 
@@ -155,8 +175,6 @@ def prepare_training_data():
         np.random.shuffle(indices)
         X = X[indices]
         y = y[indices]
-
-        
 
     return X, y
 
@@ -257,7 +275,7 @@ while True:
             # Decision Making
             tf.keras.layers.Flatten(), # Flatens out 2D matrix to 1D
             tf.keras.layers.Dense(128, activation='relu'), # decides how to use the features (128 neurons + ReLU)
-            tf.keras.layers.Dropout(0.35), # Weird overfitting prevention that turns off neurons
+            tf.keras.layers.Dropout(0.3), # Weird overfitting prevention that turns off neurons
 
             # Output Layer
             tf.keras.layers.Dense(4, activation='softmax') # 4 outputs (square, circle, triangle, other)
