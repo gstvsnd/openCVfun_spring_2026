@@ -68,15 +68,52 @@ def print_instructions_on_entry(state, last_printed_STATE):
             print("Draw something new to test the the CNN!\nSpace - clear\nEnter - predict\ns     - save & label image\nt     - Retrain CNN\nq     - quit")
         return state
 
+def center_and_resize_image(drawing_image):
+    # Center geometry in the image "Bounding Box Normalization"
+    inverted_image = 255 - drawing_image
+
+    y, x = drawing_image.shape
+    # Bounding flags:
+    x_left = x  # left 
+    x_right = 0 # right
+    y_lower = 0 # lower
+    y_upper = y # upper
+
+    # [0, 0] left  upper
+    # [y, x] right lower
+    # [0, x] left  lower
+    # [y, 0] right upper
+
+    for y_pointer in range(y):
+        for x_pointer in range(x):
+            if inverted_image[y_pointer, x_pointer] > 0 and x_pointer < x_left:
+                x_left = x_pointer
+            if inverted_image[y_pointer, x_pointer] > 0 and x_pointer > x_right:
+                x_right = x_pointer
+            if inverted_image[y_pointer, x_pointer] > 0 and y_pointer < y_upper:
+                y_upper = y_pointer
+            if inverted_image[y_pointer, x_pointer] > 0 and y_pointer > y_lower:
+                y_lower = y_pointer
+
+    print(f"x_left: {x_left}, x_right: {x_right}, y_lower: {y_lower}, y_upper: {y_upper}") #debugg
+
+    # Center and rescale figure and leave space for rotation "figure_size/sqrt(2)"
+    
+    # 1. Center
+
+    # 2. Rescale
+
+
+    return drawing_image
+
 def prepare_training_data():
 
     # TODO: Modify drawings by rotating and moving (maybe "zooming") to increase dataset size
     # Corrects for uncommon angles (eg 45degree square)
     
     # Gameplan:
-    # Center geometry in the image
-    # multiply image matrix with a rotating transformation matrix that rotates the "a bit"
     # resize the image -> all geometries set to the same size
+    # multiply image matrix with a rotating transformation matrix that rotates the "a bit" [ check! ]
 
     geometry_drawing = [] # holds processed image of drawing
     geometry_label = [] # holds 0, 1, 2, 3 for Square, Circle, Triangle, Other
@@ -92,6 +129,7 @@ def prepare_training_data():
                 # Find, load, process and save(append) each drawing from each folder
                 file_path = os.path.join(target_dir, file)
                 drawing_image = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
+                drawing_image = center_and_resize_image(drawing_image)
                 if drawing_image is not None:
                     # rotate image 30 degrees(pi/6) 11 times to generate 11 MORE images for
                     for n in range(11):
