@@ -68,6 +68,46 @@ def print_instructions_on_entry(state, last_printed_STATE):
             print("Draw something new to test the the CNN!\nSpace - clear\nEnter - predict\ns     - save & label image\nt     - Retrain CNN\nq     - quit")
         return state
 
+def prepare_training_data():
+
+    # TODO: Modify drawings by rotating and moving (maybe "zooming") to increase dataset size
+    # Corrects for uncommon angles (eg 45degree square)
+    
+    # Gameplan:
+    # Center geometry in the image
+    # multiply image matrix with a rotating transformation matrix that rotates the "a bit"
+    # resize the image -> all geometries set to the same size
+
+    geometry_drawing = [] # holds processed image of drawing
+    geometry_label = [] # holds 0, 1, 2, 3 for Square, Circle, Triangle, Other
+        
+    categories = ["square", "circle", "triangle", "other"]
+    
+    # enumerate ger: idx=0, label="square", idx=1, label="circle" osv...
+    for idx, label in enumerate(categories):
+        target_dir = f"drawings/{label}"
+        
+        if os.path.exists(target_dir):
+            for file in os.listdir(target_dir):
+                # Find, load, process and save(append) each drawing from each folder
+                file_path = os.path.join(target_dir, file)
+                drawing_image = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
+                if drawing_image is not None:
+                    processed_drawing = image_processing(drawing_image)
+                    # Save drawing_image and label in lists:
+                    geometry_drawing.append(processed_drawing) 
+                    geometry_label.append(idx)
+
+        X = np.array(geometry_drawing) # X - list of 2D matrices
+        y = np.array(geometry_label) # y - list of labels (0, 1, 2, 3) for (square, circle, triangle, other)
+
+        # Shufle drawings
+        indices = np.arange(X.shape[0])
+        np.random.shuffle(indices)
+        X = X[indices]
+        y = y[indices]
+
+    return X, y
 
 # Program states:            
 STATE_COLLECT = 0
@@ -137,34 +177,10 @@ while True:
         last_printed_STATE = print_instructions_on_entry(current_STATE, last_printed_STATE)
 
         # Load training data:
-        geometry_drawing = [] # holds processed image of drawing
-        geometry_label = [] # holds 0, 1, 2, 3 for Square, Circle, Triangle, Other
-        
-        categories = ["square", "circle", "triangle", "other"]
-        
-        # enumerate ger: idx=0, label="square", idx=1, label="circle" osv...
-        for idx, label in enumerate(categories):
-            target_dir = f"drawings/{label}"
-            
-            if os.path.exists(target_dir):
-                for file in os.listdir(target_dir):
-                    # Find, load, process and save(append) each drawing from each folder
-                    file_path = os.path.join(target_dir, file)
-                    drawing_image = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
-                    if drawing_image is not None:
-                        processed_drawing = image_processing(drawing_image)
-                        # Save drawing_image and label in lists:
-                        geometry_drawing.append(processed_drawing) 
-                        geometry_label.append(idx)
+        X, y = prepare_training_data()
 
-        X = np.array(geometry_drawing) # X - list of 2D matrices
-        y = np.array(geometry_label) # y - list of labels (0, 1, 2, 3) for (square, circle, triangle, other)
-
-        # Shufle drawings
-        indices = np.arange(X.shape[0])
-        np.random.shuffle(indices)
-        X = X[indices]
-        y = y[indices]
+        # TODO: Balance dataset
+        # Eliminates the risk of model guessing the more common shape
 
         # Split up drawings into training and testing set
         split = int(len(X) * 0.75) # 75% for training, 25% for testing
@@ -264,12 +280,6 @@ while True:
     # TODO: Eleminate/Fix Global variables, Clean up code and break out into functions and classes
     # Save iamge with label should be its own function
     # Extract numbers and variables to constraints (eg canvas size)
-
-    # TODO: Modify drawings by rotating and moving (maybe "zooming") to increase dataset size
-    # Corrects for uncommon angles (eg 45degree square)
-
-    # TODO: Balance dataset
-    # Eliminates the risk of model guessing the more common shape
 
     # TODO: Comment/document in the code
     # "Docstrings", "Type Hints", improve variable naming
