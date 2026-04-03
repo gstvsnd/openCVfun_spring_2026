@@ -67,7 +67,7 @@ def print_instructions_on_entry(state, last_printed_STATE):
         elif state == STATE_TRAIN:
             print("Training AI...")
         elif state == STATE_PREDICT:
-            print("Draw something new to test the the CNN!\nSpace - clear\nEnter - predict\ns     - save & label image\nq     - quit")
+            print("Draw something new to test the the CNN!\nSpace - clear\nEnter - predict\ns     - save & label image\nt     - Retrain CNN\nq     - quit")
         return state
 
 initialize_program()
@@ -82,7 +82,6 @@ previous_STATE = STATE_COLLECT # Allow machine to return
 last_printed_STATE = None # ONLY FOR UI
 
 # Global variables:
-index = 1 # Counts drawings
 drawing = False # Decides if mouse is painting
 
 while True:
@@ -224,7 +223,7 @@ while True:
         cv2.moveWindow("canvasWindow", 100, 100) 
         current_STATE = STATE_PREDICT
 
-
+    # Predict geometry on new drawings
     elif current_STATE == STATE_PREDICT:
         last_printed_STATE = print_instructions_on_entry(current_STATE, last_printed_STATE)
 
@@ -263,6 +262,9 @@ while True:
             # Go to saving state and then return!
             previous_STATE = STATE_PREDICT
             current_STATE = STATE_STORE
+        elif key == ord('t'): # t - go back and train!
+            previous_STATE = STATE_PREDICT
+            current_STATE = STATE_TRAIN # Retrain
         
     # Comment: This works with a even dataset of 135 drawings
     # BUT IT MISTAKES SQUARES FOR TRIANGLES!!!!!
