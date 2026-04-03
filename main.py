@@ -32,24 +32,23 @@ def mouse_listener(event, x, y, f, p):
     # 'x' & 'y' - coordinates
     # 'f' & 'p' - flags & params
     
-    global drawing # For editing draving states
+    global drawing # For editing drawing states
     n = 5 # Square size
 
     # Switch drawing state and deaw under mouse pointer:
     if event == cv2.EVENT_LBUTTONDOWN:
         drawing = True
         canvas[y-n:y+n, x-n:x+n] = 0 # start WITH this first square
-    if event == cv2.EVENT_LBUTTONUP:
+    elif event == cv2.EVENT_LBUTTONUP:
         drawing = False
     elif event == cv2.EVENT_MOUSEMOVE:
         if drawing == True: 
-            # kan rita lite utanför canvas - TODO: bugfix!
+            # Edge case - draws outside canvas TODO: bugfix!
             canvas[y-n:y+n, x-n:x+n] = 0 # Draw with squares
 
 def image_processing(drawing):
     # Should work both with .png and matrix
-    temp_drawing = drawing.copy() # Im scared
-    temp_drawing = cv2.resize(temp_drawing, (64, 64))
+    temp_drawing = cv2.resize(drawing, (64, 64))
     return temp_drawing
 
 def print_instructions_on_entry(state, last_printed_STATE):
@@ -69,7 +68,6 @@ def print_instructions_on_entry(state, last_printed_STATE):
             print("Draw something new to test the the CNN!\nSpace - clear\nEnter - predict\ns     - save & label image\nt     - Retrain CNN\nq     - quit")
         return state
 
-initialize_program()
 
 # Program states:            
 STATE_COLLECT = 0
@@ -82,6 +80,8 @@ last_printed_STATE = None # ONLY FOR UI
 
 # Global variables:
 drawing = False
+
+initialize_program()
 
 while True:
 
@@ -136,7 +136,7 @@ while True:
     elif current_STATE == STATE_TRAIN: 
         last_printed_STATE = print_instructions_on_entry(current_STATE, last_printed_STATE)
 
-        # Load training data: [ MAGIC CODE ]
+        # Load training data:
         geometry_drawing = [] # holds processed image of drawing
         geometry_label = [] # holds 0, 1, 2, 3 for Square, Circle, Triangle, Other
         
@@ -148,13 +148,11 @@ while True:
             
             if os.path.exists(target_dir):
                 for file in os.listdir(target_dir):
-                    file_path = os.path.join(target_dir, file) 
-                    # os.path.join är KUNG! (lite säkrare än filsökvägen men inte lika fancy som pathlib)
-                    
+                    # Find, load, process and save(append) each drawing from each folder
+                    file_path = os.path.join(target_dir, file)
                     drawing_image = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
-                    if drawing_image is not None: # Säkerhetskoll om filen är trasig
+                    if drawing_image is not None:
                         processed_drawing = image_processing(drawing_image)
-
                         # Save drawing_image and label in lists:
                         geometry_drawing.append(processed_drawing) 
                         geometry_label.append(idx)
@@ -176,8 +174,8 @@ while True:
         X_train = X_train.astype('float32') / 255.0
         X_test = X_test.astype('float32') / 255.0
 
-        # Generate CNN (with help from my gemeni friend and optimized with "fingerspitz gefiel")
-        CNN_model = tf.keras.models.Sequential([ # Sequential ?
+        # Generate CNN
+        CNN_model = tf.keras.models.Sequential([
             # Input Layer (decided by the drawings shape)
             tf.keras.layers.Input(shape=(64, 64, 1)),
             
@@ -198,7 +196,7 @@ while True:
 
             # Output Layer
             tf.keras.layers.Dense(4, activation='softmax') # 4 outputs (square, circle, triangle, other)
-        ]) # Tensorflow makes the CNN harder to understand
+        ])
 
         # Train model (Adam - have some momenum & adaptive learning rate)
         custom_optimizer = tf.keras.optimizers.Adam(learning_rate=0.001) # MAX lr = 0.001
@@ -230,10 +228,9 @@ while True:
         elif key == 13: # Enter
             print("Predicting...")
 
-            # Behandla användarens bild för att pass modellen:
+            # Process artists drawing and modify data to match CNN model:
             test_img = image_processing(canvas) 
             test_img = test_img.astype('float32') / 255.0
-
             # (batch, height, width, channels) 
             # (64, 64) -> (1, 64, 64, 1) -- "2D -> 4D" (barch of 1 grayscale image)
             test_img = np.expand_dims(test_img, axis=(0, -1))
@@ -241,8 +238,7 @@ while True:
             # Predict!
             prediction = CNN_model.predict(test_img)
 
-            # Result:
-            class_idx = np.argmax(prediction) # Most likeley class
+            class_idx = np.argmax(prediction) # Most likeley category
             confidence = np.max(prediction) # Certainty
 
             # Print:
@@ -251,18 +247,14 @@ while True:
             last_printed_STATE = None
             last_printed_STATE = print_instructions_on_entry(current_STATE, last_printed_STATE)
         elif key == ord('s'): # Save image (for later training)
-            # Go to saving state and then return!
             previous_STATE = STATE_PREDICT
             current_STATE = STATE_STORE
-        elif key == ord('t'): # t - go back and train!
+        elif key == ord('t'): # t - Re-train
             previous_STATE = STATE_PREDICT
             current_STATE = STATE_TRAIN # Retrain
         
     # Comment: 
-    # Challenge: Squares and triangles has similar features
-    
-    # TODO: Dynamic labeling to predict any kind of drawing decided by dataset or artist
-    # Allow Artist to define what should exist in the dataset.
+    # Challenge: Squares and triangles has similar features, and rotated shapes are harder to recognize
 
     # TODO: Modify drawings by rotating and moving (maybe "zooming") to increase dataset size
     # Corrects for uncommon angles (eg 45degree square)
@@ -270,8 +262,20 @@ while True:
     # TODO: Balance dataset
     # Eliminates the risk of model guessing the more common shape
 
-    # TODO: Clean up code and break out into functions and classes
+    # TODO: Eleminate/Fix Global variables, Clean up code and break out into functions and classes
     # Save iamge with label should be its own function
-    # Object for canvas and dataset? - idk
+    # Extract numbers and variables to constraints (eg canvas size)
+
+    # TODO: Bugfixes/edge-cases
+    # Avoid drawing outside the canvas (boundary)
+
+    # TODO: Dynamic labeling to predict any kind of drawing decided by dataset or artist
+    # Allow Artist to define what should exist in the dataset.
+
+    # TODO: Comment/document in the code
+    # "Docstrings", "Type Hints", improve variable naming
+
+    # TODO: Error handling
+    # 
 
 cv2.destroyAllWindows()
