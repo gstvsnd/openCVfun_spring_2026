@@ -240,10 +240,11 @@ while True:
 
             class_idx = np.argmax(prediction) # Most likeley category
             confidence = np.max(prediction) # Certainty
+            print(f"Prediction certanity \nSquare:    -  -    {prediction[0][0]*100:.4f}% \nCircle:    -  -    {prediction[0][1]*100:.4f}% \nTriangle:  -  -    {prediction[0][2]*100:.4f}% \nOther:     -  -    {prediction[0][3]*100:.4f}% ")
 
             # Print:
-            labels = ["Kvadrat", "Cirkel", "Triangel", "Other"]
-            print(f"Resultat: {labels[class_idx]} ({confidence*100:.1f}% säker)")
+            labels = ["Square", "Circle", "Triangle", "Other"]
+            print(f"Result: {labels[class_idx]} ({confidence*100:.1f}% Certanity)")
             last_printed_STATE = None
             last_printed_STATE = print_instructions_on_entry(current_STATE, last_printed_STATE)
         elif key == ord('s'): # Save image (for later training)
@@ -256,21 +257,19 @@ while True:
     # Comment: 
     # Challenge: Squares and triangles has similar features, and rotated shapes are harder to recognize
 
+
+    # TODO: Bugfixes/edge-cases
+    # Avoid drawing outside the canvas (boundary)
+    
+    # TODO: Eleminate/Fix Global variables, Clean up code and break out into functions and classes
+    # Save iamge with label should be its own function
+    # Extract numbers and variables to constraints (eg canvas size)
+
     # TODO: Modify drawings by rotating and moving (maybe "zooming") to increase dataset size
     # Corrects for uncommon angles (eg 45degree square)
 
     # TODO: Balance dataset
     # Eliminates the risk of model guessing the more common shape
-
-    # TODO: Eleminate/Fix Global variables, Clean up code and break out into functions and classes
-    # Save iamge with label should be its own function
-    # Extract numbers and variables to constraints (eg canvas size)
-
-    # TODO: Bugfixes/edge-cases
-    # Avoid drawing outside the canvas (boundary)
-
-    # TODO: Dynamic labeling to predict any kind of drawing decided by dataset or artist
-    # Allow Artist to define what should exist in the dataset.
 
     # TODO: Comment/document in the code
     # "Docstrings", "Type Hints", improve variable naming
