@@ -3,3 +3,4 @@ venv/
 drawings/
 notes.txt
 training_notes.txt
+*.keras
