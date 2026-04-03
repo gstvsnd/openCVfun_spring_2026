@@ -15,10 +15,10 @@ import numpy as np
 import tensorflow as tf # is PyTorch better? - "yes, probably!"
 
 def initialize_program():
-    global canvas
+    global canvas, global window_size = 512
 
     # Initialize canvas
-    canvas = np.zeros((512, 512, 1), np.uint8)
+    canvas = np.zeros((window_size, window_size, 1), np.uint8)
     canvas.fill(255) # White background
 
     # Create window and set mouse callback
@@ -43,7 +43,8 @@ def mouse_listener(event, x, y, f, p):
     if event == cv2.EVENT_LBUTTONUP:
         drawing = False
     elif event == cv2.EVENT_MOUSEMOVE:
-        if drawing == True:
+        if drawing == True: 
+            # kan rita lite utanför canvas - TODO: bugfix!
             canvas[y-n:y+n, x-n:x+n] = 0 # Draw with squares
 
 def image_processing(drawing):
@@ -240,17 +241,20 @@ while True:
             # Print:
             labels = ["Kvadrat", "Cirkel", "Triangel", "Other"]
             print(f"Resultat: {labels[class_idx]} ({confidence*100:.1f}% säker)")
+            print("Draw something new to test the the CNN!\nSpace - clear\nEnter - predict\nq     - quit")
         
-            # Comment: This works with a even dataset of 135 drawings
-            # BUT IT MISTAKES SQUARES FOR TRIANGLES!!!!!
-            # Hardest shape is a "drop" - basically puts out whatever
-            # Challenge: Swuares and triangles has similar features
-            # Continue playing around, TODO: add save button to save image.
-            # TODO: manualy lable mistakes and add to training data 
-            # "Supervise supervised learning!" - Human in the loop
-            # TODO: Dynamic labeling to predict any kind of drawing decided by dataset or artist
-            # This has become an exercice in basic python
+    # Comment: This works with a even dataset of 135 drawings
+    # BUT IT MISTAKES SQUARES FOR TRIANGLES!!!!!
+    # Hardest shape is a "drop" - basically puts out whatever
+    # Challenge: Swuares and triangles has similar features
 
+    # TODO: add save button to save image.
+    # Continue playing around, 
     
+    # TODO: manualy lable mistakes and add to training data 
+    # "Supervise supervised learning!" - Human in the loop
+    
+    # TODO: Dynamic labeling to predict any kind of drawing decided by dataset or artist
+    # This has become an exercice in basic python
 
 cv2.destroyAllWindows()
