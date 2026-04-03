@@ -11,9 +11,8 @@ import os
 
 # Third-party libraries:
 import cv2
-import matplotlib.pyplot as plt
 import numpy as np
-import tensorflow as tf # is PyTorch better?
+import tensorflow as tf # is PyTorch better? - "yes, probably!"
 
 def initialize_program():
     global canvas
@@ -202,15 +201,46 @@ while True:
         )
         CNN_model.fit(X_train, y_train, epochs=30, validation_data=(X_test, y_test))
 
+        #  Save model:
+        CNN_model.save('geometry_model.keras')
         
+        cv2.moveWindow("canvasWindow", 100, 100) # Move back canvas window
         current_STATE = STATE_PREDICT
 
 
     elif current_STATE == STATE_PREDICT:
-        # TODO: Use CNN model to identify a new drawing
-        # Maybe add each drawing to dataset
-        print("Predicting...")
-        break
+        # Use CNN model to identify a new drawing
+        # Show canvas and wait for user to draw something new:
+        cv2.imshow("canvasWindow", canvas)
+        key = cv2.waitKey(1) & 0xFF
+        if key == 32: # Space
+            canvas.fill(255) # Clear drawing (retry)
+        elif key == 13: # Enter
+            # Define label for drawing and save drawing
+            print("Predicting...")
+
+            # Behandla användarens bild för att pass modellen:
+            test_img = image_processing(canvas) 
+            test_img = test_img.astype('float32') / 255.0
+
+            # (batch, height, width, channels) 
+            # (64, 64) -> (1, 64, 64, 1) -- "2D -> 4D"
+            test_img = np.expand_dims(test_img, axis=(0, -1))
+
+            # Predict!
+            prediction = CNN_model.predict(test_img)
+
+            # Result:
+            class_idx = np.argmax(prediction) # Most likeley class
+            confidence = np.max(prediction) # Certainty
+
+            # Print:
+            labels = ["Kvadrat", "Cirkel", "Triangel"]
+            print(f"Resultat: {labels[class_idx]} ({confidence*100:.1f}% säker)")
+        
+            # Comment: This works realy nice now(!) with a even dataset of 135 drawings
+            # Continue playing around, TODO: add save button to save image.
+
     
 
 cv2.destroyAllWindows()
