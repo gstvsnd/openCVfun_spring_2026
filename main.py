@@ -63,7 +63,7 @@ def print_instructions_on_entry(state, last_printed_STATE):
         elif state == STATE_STORE:
             print("What have you drawn?\n1 - Square\n2 - Circle\n3 - Triangle\nEnter - Other\nEscape - ESCAPE!")
         elif state == STATE_TRAIN:
-            print("Training AI...")
+            print("Preparing AI")
         elif state == STATE_PREDICT:
             print("Draw something new to test the the CNN!\nSpace - clear\nEnter - predict\ns     - save & label image\nt     - Retrain CNN\nq     - quit")
         return state
@@ -127,14 +127,17 @@ def prepare_training_data():
                 drawing_image = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
                 drawing_image = center_and_rescale_image(drawing_image)
                 if drawing_image is not None:
-                    # rotate image 30 degrees(pi/6) 11 times to generate 11 MORE images for
-                    for n in range(11):
-                        # Transformation matrix (n * 30 degree rotation)
-                        angle = n * (np.pi / 6)
-                        M = np.array([ [np.cos(angle), -np.sin(angle), 0], [np.sin(angle), np.cos(angle), 0]])
-
+                    # rotate image 60 degrees(pi/3) 5 times to generate 6 MORE images for
+                    for n in range(6):
                         # Rotates image and fills corners with 255/white:
                         h, w = drawing_image.shape # height & width (512)
+
+                        center = (w // 2, h // 2)
+                        angle = n * (np.pi / 3)
+                        angle_deg = np.degrees(angle)
+
+                        M = cv2.getRotationMatrix2D(center, angle_deg, 1.0) # Rotates around image center.
+
                         rotated_img = cv2.warpAffine(drawing_image, M, (w, h), borderValue=255) # Matrixmultiplication with interpolation
 
                         # Compromize and append
@@ -243,22 +246,20 @@ while True:
             tf.keras.layers.MaxPooling2D((2, 2)), # Downsampling
             tf.keras.layers.Conv2D(64, (5, 5), activation='relu'), # more conv2 filters (on smaller areas)
             tf.keras.layers.MaxPooling2D((2, 2)),
-            tf.keras.layers.Conv2D(32, (3, 3), activation='relu'), # more conv2 filters (on smaller areas)
-            tf.keras.layers.MaxPooling2D((2, 2)),
             # Comment: Features -> downsampling -> Features -> more downsampling -> Features -> more downsampling
             # fewer pixels & bigger scope for each layer
 
             # Decision Making
             tf.keras.layers.Flatten(), # Flatens out 2D matrix to 1D
             tf.keras.layers.Dense(128, activation='relu'), # decides how to use the features (128 neurons + ReLU)
-            tf.keras.layers.Dropout(0.3), # Weird overfitting prevention that turns off neurons
+            tf.keras.layers.Dropout(0.35), # Turn of neurons to prevent overfitting
 
             # Output Layer
             tf.keras.layers.Dense(4, activation='softmax') # 4 outputs (square, circle, triangle, other)
         ])
 
         # Train model (Adam - have some momenum & adaptive learning rate)
-        custom_optimizer = tf.keras.optimizers.Adam(learning_rate=0.002) # MAX lr = 0.002
+        custom_optimizer = tf.keras.optimizers.Adam(learning_rate=0.001) # MAX lr = 0.001
         CNN_model.compile(
             optimizer=custom_optimizer,
             loss='sparse_categorical_crossentropy',
@@ -289,8 +290,8 @@ while True:
 
             # Process artists drawing and modify data to match CNN model:
             test_img = center_and_rescale_image(canvas)
-            test_img = image_processing(test_img)
             test_img = test_img.astype('float32') / 255.0
+            test_img = image_processing(test_img)
             # (batch, height, width, channels)
             # (64, 64) -> (1, 64, 64, 1) -- "2D -> 4D" (barch of 1 grayscale image)
             test_img = np.expand_dims(test_img, axis=(0, -1))
