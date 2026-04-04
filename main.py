@@ -68,11 +68,13 @@ def print_instructions_on_entry(state, last_printed_STATE):
             print("Draw something new to test the the CNN!\nSpace - clear\nEnter - predict\ns     - save & label image\nt     - Retrain CNN\nq     - quit")
         return state
 
-def center_and_resize_image(drawing_image):
+def center_and_rescale_image(drawing_image):
     # Center geometry in the image "Bounding Box Normalization"
-    inverted_image = 255 - drawing_image
+    inverted_image = 255 - np.squeeze(drawing_image) # squeezes out the 1:s in the shape (accepts "canvas")
 
-    y, x = drawing_image.shape
+    # Handle 2D and 3D arrays (both image and canvas) - ignores colour channel
+    y = drawing_image.shape[0]
+    x = drawing_image.shape[1]
     # Bounding flags:
     x_left = x  # left 
     x_right = 0 # right
@@ -95,36 +97,18 @@ def center_and_resize_image(drawing_image):
                 y_upper = y_pointer
             if inverted_image[y_pointer, x_pointer] > 0 and y_pointer > y_lower:
                 y_lower = y_pointer
-
-    print(f"x_left: {x_left}, x_right: {x_right}, y_lower: {y_lower}, y_upper: {y_upper}") #debugg
     
-    # Find coordinates of figure-center
-    width_center = (x_left + x_right)/2
-    height_center = (y_lower + y_upper)/2
-
-    # Offset (integer-division for pixels)
-    offset_x = (x//2) - width_center
-    offset_y = (y//2) - height_center
-    
-    # Center
-    centered_image = np.full((y, x), 0, dtype=np.uint8)
-
-    # We are the artists now!
-    for y_pointer in range(y):
-        for x_pointer in range(x):
-            if inverted_image[y_pointer, x_pointer] > 0:
-                new_y = int(y_pointer + offset_y) # Important to be an integer!
-                new_x = int(x_pointer + offset_x)
-                # Paint! - since the figure is smaller than the canvas, WE WILL NOT SPILL THE PAINT!
-                centered_image[new_y, new_x] = inverted_image[y_pointer, x_pointer]
-    cv2.imshow("Debug", centered_image) # debugg
-    cv2.waitKey(0)
-    # Milestone: centered_image is an inverted and centered verion of drawing_image
-
-
     # Rescale and leave space for rotation "sqrt(2)"
+    # Cut empty space around geometry(outside flags) -> add padding around(for safety before rotating) -> rescale(without changing proportions)
+    cropped_image = inverted_image[y_upper-1:y_lower+2, x_left-1:x_right+2] # Only keep pixels within the flags + 1pixel margin, (centering no longer is needed...)
+    padded_image = cv2.copyMakeBorder(cropped_image, 75, 75, 75, 75, cv2.BORDER_CONSTANT, value=0)
+    # Margin: "upper, lower, left, right" - (512-(512/sqrt(2)))/2 = 75 pixels
 
-    return drawing_image
+    # Stretch back image to 512x512 resolution
+    stretched_image = cv2.resize(padded_image, (512, 512))
+
+    final_image = 255 - stretched_image # re-inverts the stretched image
+    return final_image
 
 def prepare_training_data():
 
@@ -149,7 +133,7 @@ def prepare_training_data():
                 # Find, load, process and save(append) each drawing from each folder
                 file_path = os.path.join(target_dir, file)
                 drawing_image = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
-                drawing_image = center_and_resize_image(drawing_image)
+                drawing_image = center_and_rescale_image(drawing_image)
                 if drawing_image is not None:
                     # rotate image 30 degrees(pi/6) 11 times to generate 11 MORE images for
                     for n in range(11):
@@ -267,8 +251,8 @@ while True:
             tf.keras.layers.MaxPooling2D((2, 2)), # Downsampling
             tf.keras.layers.Conv2D(64, (5, 5), activation='relu'), # more conv2 filters (on smaller areas)
             tf.keras.layers.MaxPooling2D((2, 2)),
-            tf.keras.layers.Conv2D(32, (3, 3), activation='relu'), # more conv2 filters (on smaller areas)
-            tf.keras.layers.MaxPooling2D((2, 2)),
+            #tf.keras.layers.Conv2D(32, (3, 3), activation='relu'), # more conv2 filters (on smaller areas)
+            #tf.keras.layers.MaxPooling2D((2, 2)),
             # Comment: Features -> downsampling -> Features -> more downsampling -> Features -> more downsampling
             # fewer pixels & bigger scope for each layer
 
@@ -288,7 +272,7 @@ while True:
             loss='sparse_categorical_crossentropy',
             metrics=['accuracy']
         )
-        CNN_model.fit(X_train, y_train, epochs=30, validation_data=(X_test, y_test))
+        CNN_model.fit(X_train, y_train, epochs=1, validation_data=(X_test, y_test))
 
         #  Save model:
         CNN_model.save('geometry_model.keras')
@@ -306,15 +290,16 @@ while True:
         key = cv2.waitKey(1) & 0xFF
         if key == 32: # Space
             canvas.fill(255)
-        elif key == ord('q') or key == 27: # quit (q or escape)
+        elif key == ord('q'): # quit (q)
             break
         elif key == 13: # Enter
             print("Predicting...")
 
             # Process artists drawing and modify data to match CNN model:
-            test_img = image_processing(canvas) 
+            test_img = center_and_rescale_image(canvas)
+            test_img = image_processing(test_img)
             test_img = test_img.astype('float32') / 255.0
-            # (batch, height, width, channels) 
+            # (batch, height, width, channels)
             # (64, 64) -> (1, 64, 64, 1) -- "2D -> 4D" (barch of 1 grayscale image)
             test_img = np.expand_dims(test_img, axis=(0, -1))
 
