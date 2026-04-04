@@ -111,14 +111,6 @@ def center_and_rescale_image(drawing_image):
     return final_image
 
 def prepare_training_data():
-
-    # TODO: Modify drawings by rotating and moving (maybe "zooming") to increase dataset size
-    # Corrects for uncommon angles (eg 45degree square)
-    
-    # Gameplan:
-    # resize the image -> all geometries set to the same size
-    # multiply image matrix with a rotating transformation matrix that rotates the "a bit" [ check! ]
-
     geometry_drawing = [] # holds processed image of drawing
     geometry_label = [] # holds 0, 1, 2, 3 for Square, Circle, Triangle, Other
         
@@ -143,7 +135,7 @@ def prepare_training_data():
 
                         # Rotates image and fills corners with 255/white:
                         h, w = drawing_image.shape # height & width (512)
-                        rotated_img = cv2.warpAffine(drawing_image, M, (w, h), borderValue=255)
+                        rotated_img = cv2.warpAffine(drawing_image, M, (w, h), borderValue=255) # Matrixmultiplication with interpolation
 
                         # Compromize and append
                         rotated_img = rotated_img.astype('float32') / 255.0
@@ -251,8 +243,8 @@ while True:
             tf.keras.layers.MaxPooling2D((2, 2)), # Downsampling
             tf.keras.layers.Conv2D(64, (5, 5), activation='relu'), # more conv2 filters (on smaller areas)
             tf.keras.layers.MaxPooling2D((2, 2)),
-            #tf.keras.layers.Conv2D(32, (3, 3), activation='relu'), # more conv2 filters (on smaller areas)
-            #tf.keras.layers.MaxPooling2D((2, 2)),
+            tf.keras.layers.Conv2D(32, (3, 3), activation='relu'), # more conv2 filters (on smaller areas)
+            tf.keras.layers.MaxPooling2D((2, 2)),
             # Comment: Features -> downsampling -> Features -> more downsampling -> Features -> more downsampling
             # fewer pixels & bigger scope for each layer
 
@@ -266,13 +258,13 @@ while True:
         ])
 
         # Train model (Adam - have some momenum & adaptive learning rate)
-        custom_optimizer = tf.keras.optimizers.Adam(learning_rate=0.001) # MAX lr = 0.001
+        custom_optimizer = tf.keras.optimizers.Adam(learning_rate=0.002) # MAX lr = 0.002
         CNN_model.compile(
             optimizer=custom_optimizer,
             loss='sparse_categorical_crossentropy',
             metrics=['accuracy']
         )
-        CNN_model.fit(X_train, y_train, epochs=1, validation_data=(X_test, y_test))
+        CNN_model.fit(X_train, y_train, epochs=25, validation_data=(X_test, y_test))
 
         #  Save model:
         CNN_model.save('geometry_model.keras')
@@ -324,7 +316,6 @@ while True:
         
     # Comment: 
     # Challenge: Squares and triangles has similar features, and rotated shapes are harder to recognize
-
 
     # TODO: Bugfixes/edge-cases
     # Avoid drawing outside the canvas (boundary)
