@@ -33,18 +33,18 @@ def mouse_listener(event, x, y, f, p):
     # 'f' & 'p' - flags & params
     
     global drawing # For editing drawing states
-    n = 5 # Square size
+    n = 5 # Stickman size
 
     # Switch drawing state and deaw under mouse pointer:
     if event == cv2.EVENT_LBUTTONDOWN:
         drawing = True
-        canvas[y-n:y+n, x-n:x+n] = 0 # start WITH this first square
+        canvas[y-n:y+n, x-n:x+n] = 0 # start WITH this first Stickman
     elif event == cv2.EVENT_LBUTTONUP:
         drawing = False
     elif event == cv2.EVENT_MOUSEMOVE:
         if drawing == True: 
             # Edge case - draws outside canvas TODO: bugfix!
-            canvas[y-n:y+n, x-n:x+n] = 0 # Draw with squares
+            canvas[y-n:y+n, x-n:x+n] = 0 # Draw with stickmans
 
 def image_processing(drawing):
     # Should work both with .png and matrix
@@ -59,9 +59,9 @@ def print_instructions_on_entry(state, last_printed_STATE):
         # set last_printed_STATE = state
     else:
         if state == STATE_COLLECT:
-            print("Draw a Square, circle or triangle\nSpace  - clear\nEnter  - save\nEscape - Finish drawing")
+            print("Draw a Stickman, Star or Ghost\nSpace  - clear\nEnter  - save\nEscape - Finish drawing")
         elif state == STATE_STORE:
-            print("What have you drawn?\n1 - Square\n2 - Circle\n3 - Triangle\nEnter - Other\nEscape - ESCAPE!")
+            print("What have you drawn?\n1 - Stickman\n2 - Star\n3 - Ghost\nEnter - other\nEscape - ESCAPE!")
         elif state == STATE_TRAIN:
             print("Preparing AI")
         elif state == STATE_PREDICT:
@@ -112,11 +112,11 @@ def center_and_rescale_image(drawing_image):
 
 def prepare_training_data():
     geometry_drawing = [] # holds processed image of drawing
-    geometry_label = [] # holds 0, 1, 2, 3 for Square, Circle, Triangle, Other
+    geometry_label = [] # holds 0, 1, 2, 3 for Stickman, Star, Ghost, other
         
-    categories = ["square", "circle", "triangle", "other"]
+    categories = ["Stickman", "Star", "Ghost", "other"]
     
-    # enumerate ger: idx=0, label="square", idx=1, label="circle" osv...
+    # enumerate ger: idx=0, label="Stickman", idx=1, label="Star" osv...
     for idx, label in enumerate(categories):
         target_dir = f"drawings/{label}"
         
@@ -147,7 +147,7 @@ def prepare_training_data():
                         geometry_label.append(idx)
 
         X = np.array(geometry_drawing) # X - list of 2D matrices (normalized floats 0 - 1)
-        y = np.array(geometry_label) # y - list of labels (0, 1, 2, 3) for (square, circle, triangle, other)
+        y = np.array(geometry_label) # y - list of labels (0, 1, 2, 3) for (Stickman, Star, Ghost, other)
 
         # Shufle drawings
         indices = np.arange(X.shape[0])
@@ -196,11 +196,11 @@ while True:
         label_key = cv2.waitKey(1) & 0xFF
         label = "undeclared"
         if label_key == 49: # '1'
-            label = "square"
+            label = "Stickman"
         elif label_key == 50: # '2'
-            label = "circle"
+            label = "Star"
         elif label_key == 51: # '3'
-            label = "triangle"
+            label = "Ghost"
         elif label_key == 13: # Enter
             label = "other"
         elif label_key == 27: # Escape
@@ -255,7 +255,7 @@ while True:
             tf.keras.layers.Dropout(0.35), # Turn of neurons to prevent overfitting
 
             # Output Layer
-            tf.keras.layers.Dense(4, activation='softmax') # 4 outputs (square, circle, triangle, other)
+            tf.keras.layers.Dense(4, activation='softmax') # 4 outputs (Stickman, Star, Ghost, other)
         ])
 
         # Train model (Adam - have some momenum & adaptive learning rate)
@@ -301,10 +301,10 @@ while True:
 
             class_idx = np.argmax(prediction) # Most likeley category
             confidence = np.max(prediction) # Certainty
-            print(f"Prediction certanity \nSquare:    -  -    {prediction[0][0]*100:.4f}% \nCircle:    -  -    {prediction[0][1]*100:.4f}% \nTriangle:  -  -    {prediction[0][2]*100:.4f}% \nOther:     -  -    {prediction[0][3]*100:.4f}% ")
+            print(f"Prediction certanity \Stickman:    -  -    {prediction[0][0]*100:.4f}% \nStar:    -  -    {prediction[0][1]*100:.4f}% \Ghost:  -  -    {prediction[0][2]*100:.4f}% \other:     -  -    {prediction[0][3]*100:.4f}% ")
 
             # Print:
-            labels = ["Square", "Circle", "Triangle", "Other"]
+            labels = ["Stickman", "Star", "Ghost", "other"]
             print(f"Result: {labels[class_idx]} ({confidence*100:.1f}% Certanity)")
             last_printed_STATE = None
             last_printed_STATE = print_instructions_on_entry(current_STATE, last_printed_STATE)
@@ -314,9 +314,6 @@ while True:
         elif key == ord('t'): # t - Re-train
             previous_STATE = STATE_PREDICT
             current_STATE = STATE_TRAIN # Retrain
-        
-    # Comment: 
-    # Challenge: Squares and triangles has similar features, and rotated shapes are harder to recognize
 
     # TODO: Bugfixes/edge-cases
     # Avoid drawing outside the canvas (boundary)
